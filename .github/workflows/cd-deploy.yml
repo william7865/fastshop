@@ -49,7 +49,7 @@ jobs:
       db_required: ${{ steps.vars.outputs.db_required }}
       db_name: ${{ steps.vars.outputs.db_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: vars
         run: |
           case "${{ inputs.service }}" in
@@ -107,7 +107,7 @@ jobs:
       tag: ${{ steps.bump.outputs.tag }}
       changelog: ${{ steps.bump.outputs.changelog }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - run: |
@@ -160,7 +160,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [version, validate]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -183,7 +183,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [version, docker]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: softprops/action-gh-release@v2
