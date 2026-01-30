@@ -46,6 +46,9 @@ services:
   api-gateway:
     build: ./services/api-gateway
     ports: ["3000:3000"]
+    environment:
+      PRODUCT_SERVICE_URL: http://product-service:3001
+      ORDER_SERVICE_URL: http://order-service:3002
   frontend:
     build: ./frontend
     ports: ["8081:8080"]

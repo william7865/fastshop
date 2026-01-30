@@ -10,6 +10,9 @@ on:
       - "frontend/**"
       - ".github/workflows/ci-frontend.yml"
 
+permissions:
+  security-events: write
+
 jobs:
   lint:
     runs-on: ubuntu-latest

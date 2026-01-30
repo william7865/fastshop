@@ -10,6 +10,9 @@ on:
       - "services/api-gateway/**"
       - ".github/workflows/ci-api-gateway.yml"
 
+permissions:
+  security-events: write
+
 jobs:
   lint:
     runs-on: ubuntu-latest

@@ -10,6 +10,9 @@ on:
       - "services/order-service/**"
       - ".github/workflows/ci-order-service.yml"
 
+permissions:
+  security-events: write
+
 jobs:
   lint:
     runs-on: ubuntu-latest

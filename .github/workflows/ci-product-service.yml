@@ -10,6 +10,9 @@ on:
       - "services/product-service/**"
       - ".github/workflows/ci-product-service.yml"
 
+permissions:
+  security-events: write
+
 jobs:
   lint:
     runs-on: ubuntu-latest
