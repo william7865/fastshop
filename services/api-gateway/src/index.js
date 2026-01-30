@@ -13,7 +13,7 @@ app.get("/products", async (_, res) => {
     const response = await fetch(`${productServiceUrl}/products`);
     const data = await response.json();
     res.status(response.status).json(data);
-  } catch (err) {
+  } catch {
     res.status(502).json({ ok: false, error: "product-service unavailable" });
   }
 });
@@ -23,7 +23,7 @@ app.get("/orders", async (_, res) => {
     const response = await fetch(`${orderServiceUrl}/orders`);
     const data = await response.json();
     res.status(response.status).json(data);
-  } catch (err) {
+  } catch {
     res.status(502).json({ ok: false, error: "order-service unavailable" });
   }
 });
