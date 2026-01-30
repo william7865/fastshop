@@ -1,0 +1,12 @@
+## product-service v1.0.1 (2026-01-30)
+- Test CD (c53067e)
+- bdd issues (22d05c2)
+- Fix lint order-service (c9fed08)
+- Fix error lint (3bea5f7)
+- Add workflows (43d4f26)
+- Add db (ccadf4d)
+- Fix port (7e90308)
+- Add services (5d05ad5)
+- Simple Frontend (57dd099)
+- init projet (9b0f760)
+
