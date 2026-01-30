@@ -1,19 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function App() {
-  const [msg, setMsg] = useState("");
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
 
-  async function ping() {
-    const r = await fetch("http://localhost:3000/health");
-    const j = await r.json();
-    setMsg(JSON.stringify(j));
-  }
+  useEffect(() => {
+    fetch("/products").then(r => r.json()).then(setProducts);
+    fetch("/orders").then(r => r.json()).then(setOrders);
+  }, []);
 
   return (
-    <div style={{ fontFamily: "sans-serif", padding: 20 }}>
-      <h1>FastShop Frontend </h1>
-      <button onClick={ping}>Ping API Gateway</button>
-      <pre>{msg}</pre>
+    <div>
+      <h2>Produits</h2>
+      <ul>{products.map(p => <li key={p.id}>{p.name}</li>)}</ul>
+
+      <h2>Commandes</h2>
+      <ul>{orders.map(o => <li key={o.id}>{o.total}</li>)}</ul>
     </div>
   );
 }
