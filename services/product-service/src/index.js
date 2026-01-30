@@ -1,25 +1,25 @@
 import express from "express";
-import pg from "pg";
+import { PrismaClient } from "@prisma/client";
 
 const app = express();
-const { Pool } = pg;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5435/products",
-});
+const prisma = new PrismaClient();
 
 async function ensureSchema() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS products (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL
-    )
-  `);
+  const count = await prisma.product.count();
+  if (count === 0) {
+    await prisma.product.createMany({
+      data: [
+        { name: "T-shirt FastShop" },
+        { name: "Mug FastShop" },
+        { name: "Casquette FastShop" },
+      ],
+    });
+  }
 }
 
 app.get("/health", async (_, res) => {
   try {
-    await pool.query("SELECT 1");
+    await prisma.$queryRaw`SELECT 1`;
     res.json({ ok: true, service: "product-service", db: "up" });
   } catch (err) {
     res.status(500).json({ ok: false, service: "product-service", db: "down" });
@@ -27,8 +27,8 @@ app.get("/health", async (_, res) => {
 });
 
 app.get("/products", async (_, res) => {
-  const { rows } = await pool.query("SELECT id, name FROM products ORDER BY id");
-  res.json(rows);
+  const products = await prisma.product.findMany({ orderBy: { id: "asc" } });
+  res.json(products);
 });
 
 const port = 3001;

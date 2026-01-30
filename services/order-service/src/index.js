@@ -1,25 +1,25 @@
 import express from "express";
-import pg from "pg";
+import { PrismaClient } from "@prisma/client";
 
 const app = express();
-const { Pool } = pg;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5434/orders",
-});
+const prisma = new PrismaClient();
 
 async function ensureSchema() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS orders (
-      id SERIAL PRIMARY KEY,
-      status TEXT NOT NULL
-    )
-  `);
+  const count = await prisma.order.count();
+  if (count === 0) {
+    await prisma.order.createMany({
+      data: [
+        { status: "PENDING" },
+        { status: "PAID" },
+        { status: "SHIPPED" },
+      ],
+    });
+  }
 }
 
 app.get("/health", async (_, res) => {
   try {
-    await pool.query("SELECT 1");
+    await prisma.$queryRaw`SELECT 1`;
     res.json({ ok: true, service: "order-service", db: "up" });
   } catch (err) {
     res.status(500).json({ ok: false, service: "order-service", db: "down" });
@@ -27,8 +27,8 @@ app.get("/health", async (_, res) => {
 });
 
 app.get("/orders", async (_, res) => {
-  const { rows } = await pool.query("SELECT id, status FROM orders ORDER BY id");
-  res.json(rows);
+  const orders = await prisma.order.findMany({ orderBy: { id: "asc" } });
+  res.json(orders);
 });
 
 const port = 3002;
