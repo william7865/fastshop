@@ -84,11 +84,15 @@ jobs:
           node-version: 20
           cache: "npm"
           cache-dependency-path: ${{ steps.vars.outputs.service_dir }}/package-lock.json
+      - if: ${{ steps.vars.outputs.db_required == 'true' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
       - run: npm ci
         working-directory: ${{ steps.vars.outputs.service_dir }}
       - if: ${{ steps.vars.outputs.db_required == 'true' }}
         run: |
-          docker exec postgres psql -U postgres -d postgres -c "CREATE DATABASE ${{ steps.vars.outputs.db_name }};"
+          PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE DATABASE ${{ steps.vars.outputs.db_name }};"
           npx prisma generate
           npx prisma db push
         working-directory: ${{ steps.vars.outputs.service_dir }}
