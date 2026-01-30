@@ -131,6 +131,7 @@ jobs:
             RANGE="$LAST_TAG..HEAD"
           fi
           CHANGELOG_FILE="${{ needs.validate.outputs.service_dir }}/CHANGELOG.md"
+          TMP_CHANGELOG=$(mktemp)
           {
             echo "## ${{ inputs.service }} v$VERSION ($(date -u +%Y-%m-%d))"
             if [ -n "$RANGE" ]; then
@@ -143,7 +144,8 @@ jobs:
             if [ -f "$CHANGELOG_FILE" ]; then
               cat "$CHANGELOG_FILE"
             fi
-          } > "$CHANGELOG_FILE"
+          } > "$TMP_CHANGELOG"
+          mv "$TMP_CHANGELOG" "$CHANGELOG_FILE"
 
           git add "$CHANGELOG_FILE" "${{ needs.validate.outputs.service_dir }}/package.json" "${{ needs.validate.outputs.service_dir }}/package-lock.json"
           git commit -m "${{ inputs.service }} release v$VERSION"
