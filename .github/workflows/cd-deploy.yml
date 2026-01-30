@@ -1,0 +1,192 @@
+name: CD - deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: "Version bump (patch/minor/major)"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        required: true
+      service:
+        description: "Service to deploy"
+        type: choice
+        options:
+          - product-service
+          - order-service
+          - api-gateway
+          - frontend
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d app"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    outputs:
+      service_dir: ${{ steps.vars.outputs.service_dir }}
+      image_name: ${{ steps.vars.outputs.image_name }}
+      port: ${{ steps.vars.outputs.port }}
+      db_required: ${{ steps.vars.outputs.db_required }}
+      db_name: ${{ steps.vars.outputs.db_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: vars
+        run: |
+          case "${{ inputs.service }}" in
+            product-service)
+              echo "service_dir=services/product-service" >> "$GITHUB_OUTPUT"
+              echo "port=3001" >> "$GITHUB_OUTPUT"
+              echo "db_required=true" >> "$GITHUB_OUTPUT"
+              echo "db_name=products" >> "$GITHUB_OUTPUT"
+              ;;
+            order-service)
+              echo "service_dir=services/order-service" >> "$GITHUB_OUTPUT"
+              echo "port=3002" >> "$GITHUB_OUTPUT"
+              echo "db_required=true" >> "$GITHUB_OUTPUT"
+              echo "db_name=orders" >> "$GITHUB_OUTPUT"
+              ;;
+            api-gateway)
+              echo "service_dir=services/api-gateway" >> "$GITHUB_OUTPUT"
+              echo "port=3000" >> "$GITHUB_OUTPUT"
+              echo "db_required=false" >> "$GITHUB_OUTPUT"
+              echo "db_name=" >> "$GITHUB_OUTPUT"
+              ;;
+            frontend)
+              echo "service_dir=frontend" >> "$GITHUB_OUTPUT"
+              echo "port=8080" >> "$GITHUB_OUTPUT"
+              echo "db_required=false" >> "$GITHUB_OUTPUT"
+              echo "db_name=" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+          echo "image_name=ghcr.io/${{ github.repository_owner }}/fastshop-${{ inputs.service }}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: ${{ steps.vars.outputs.service_dir }}/package-lock.json
+      - run: npm ci
+        working-directory: ${{ steps.vars.outputs.service_dir }}
+      - if: ${{ steps.vars.outputs.db_required == 'true' }}
+        run: |
+          docker exec postgres psql -U postgres -d postgres -c "CREATE DATABASE ${{ steps.vars.outputs.db_name }};"
+          npx prisma generate
+          npx prisma db push
+        working-directory: ${{ steps.vars.outputs.service_dir }}
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/${{ steps.vars.outputs.db_name }}
+      - run: npm test
+        working-directory: ${{ steps.vars.outputs.service_dir }}
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/${{ steps.vars.outputs.db_name }}
+
+  version:
+    runs-on: ubuntu-latest
+    needs: validate
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+      changelog: ${{ steps.bump.outputs.changelog }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          git config user.name "fastshop-bot"
+          git config user.email "fastshop-bot@users.noreply.github.com"
+      - id: bump
+        run: |
+          SERVICE_DIR="${{ needs.validate.outputs.service_dir }}"
+          cd "$SERVICE_DIR"
+          npm version ${{ inputs.version_bump }} --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          cd - >/dev/null
+
+          LAST_TAG=$(git tag --list "${{ inputs.service }}-v*" --sort=-v:refname | head -n1)
+          RANGE=""
+          if [ -n "$LAST_TAG" ]; then
+            RANGE="$LAST_TAG..HEAD"
+          fi
+          CHANGELOG_FILE="${{ needs.validate.outputs.service_dir }}/CHANGELOG.md"
+          {
+            echo "## ${{ inputs.service }} v$VERSION ($(date -u +%Y-%m-%d))"
+            if [ -n "$RANGE" ]; then
+              git log $RANGE --pretty=format:"- %s (%h)"
+            else
+              git log --pretty=format:"- %s (%h)"
+            fi
+            echo ""
+            echo ""
+            if [ -f "$CHANGELOG_FILE" ]; then
+              cat "$CHANGELOG_FILE"
+            fi
+          } > "$CHANGELOG_FILE"
+
+          git add "$CHANGELOG_FILE" "${{ needs.validate.outputs.service_dir }}/package.json" "${{ needs.validate.outputs.service_dir }}/package-lock.json"
+          git commit -m "${{ inputs.service }} release v$VERSION"
+
+          TAG="${{ inputs.service }}-v$VERSION"
+          git tag "$TAG"
+          git push origin HEAD
+          git push origin "$TAG"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          CHANGELOG_HEAD=$(sed -n '1,40p' "$CHANGELOG_FILE")
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$CHANGELOG_HEAD" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [version, validate]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./${{ needs.validate.outputs.service_dir }}
+          file: ./${{ needs.validate.outputs.service_dir }}/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/fastshop-${{ inputs.service }}:latest
+            ghcr.io/${{ github.repository_owner }}/fastshop-${{ inputs.service }}:${{ needs.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/fastshop-${{ inputs.service }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [version, docker]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          body: ${{ needs.version.outputs.changelog }}
