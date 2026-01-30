@@ -79,7 +79,7 @@ jobs:
               ;;
           esac
           echo "image_name=ghcr.io/${{ github.repository_owner }}/fastshop-${{ inputs.service }}" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: "npm"
