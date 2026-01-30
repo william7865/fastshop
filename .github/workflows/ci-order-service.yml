@@ -57,9 +57,14 @@ jobs:
           cache-dependency-path: services/order-service/package-lock.json
       - run: npm ci
       - run: npx prisma generate
+        env:
+          PRISMA_CLI_QUERY_ENGINE_TYPE: binary
+          PRISMA_CLIENT_ENGINE_TYPE: binary
       - run: npx prisma db push
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/orders
+          PRISMA_CLI_QUERY_ENGINE_TYPE: binary
+          PRISMA_CLIENT_ENGINE_TYPE: binary
       - run: npm test
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/orders
