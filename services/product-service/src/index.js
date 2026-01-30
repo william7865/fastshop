@@ -5,7 +5,7 @@ const app = express();
 const { Pool } = pg;
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5433/products",
+  connectionString: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5435/products",
 });
 
 async function ensureSchema() {

@@ -5,7 +5,7 @@ services:
       POSTGRES_DB: products
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports: ["5433:5432"]
+    ports: ["5435:5432"]
     volumes:
       - product-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -19,7 +19,7 @@ services:
       POSTGRES_DB: orders
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports: ["5434:5432"]
+    ports: ["5436:5432"]
     volumes:
       - order-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -48,7 +48,7 @@ services:
     ports: ["3000:3000"]
   frontend:
     build: ./frontend
-    ports: ["8080:8080"]
+    ports: ["8081:8080"]
 
 volumes:
   product-db-data:
