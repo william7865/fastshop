@@ -1,3 +1,6 @@
+## product-service v1.0.2 (2026-01-30)
+- Fix Prisma (8905190)
+
 ## product-service v1.0.1 (2026-01-30)
 - Test CD (c53067e)
 - bdd issues (22d05c2)
